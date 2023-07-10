@@ -3,9 +3,9 @@ import numpy as np
 import datetime
 
 
-cap = cv2.VideoCapture("../Videos_fan/120rpm.mp4")
+cap = cv2.VideoCapture("C:/Users/Mansi/Desktop/BTP/CODE/Videos/S120rpm.mp4")
 
-video_type = int(input("Select video type: \n 1. Linear \n 2. Rotational \n"))
+video_type = int(input('Select video type: \n 1. Linear \n 2. Rotational \n'))
 
 # tracker = cv2.TrackerMOSSE_create()
 # tracker = cv2.legacy.TrackerMOSSE_create()
