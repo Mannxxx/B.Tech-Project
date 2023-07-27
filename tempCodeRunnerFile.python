@@ -1,32 +1,42 @@
 import cv2
-import numpy as np
 
-def extract_blade_tip(image_path):
-    # Load the image
-    image = cv2.imread(image_path)
+# Initialize the video capture
+video = cv2.VideoCapture('C:/Users/Mansi/Desktop/BTP/CODE/Videos/120rpm.mp4')
 
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# Create the KCF tracker
+tracker = cv2.TrackerKCF_create()
 
-    # Apply edge detection (adjust the parameters as needed)
-    edges = cv2.Canny(gray, threshold1=100, threshold2=200)
+# Read the first frame
+ret, frame = video.read()
 
-    # Find contours in the edge image
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+# Select the object to track
+bbox = cv2.selectROI(frame, False)
 
-    # Select the contour with the largest area as the blade contour
-    blade_contour = max(contours, key=cv2.contourArea)
+# Initialize the tracker with the selected bounding box
+tracker.init(frame, bbox)
 
-    # Find the minimum enclosing circle of the blade contour
-    (x, y), radius = cv2.minEnclosingCircle(blade_contour)
-    center = (int(x), int(y))
+# Main loop
+while True:
+    # Read the current frame
+    ret, frame = video.read()
+    if not ret:
+        break
 
-    # Calculate the tip coordinates
-    tip_coordinates = (int(x), int(y - radius))
+    # Update the tracker
+    success, bbox = tracker.update(frame)
 
-    return tip_coordinates
+    # Draw the bounding box
+    if success:
+        x, y, w, h = [int(v) for v in bbox]
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-# Example usage
-image_path = "C:/Users/Mansi/Desktop/BTP-1/Image-rotor.png"
-blade_tip = extract_blade_tip(image_path)
-print("Blade tip coordinates:", blade_tip)
+    # Display the frame
+    cv2.imshow('Frame', frame)
+
+    # Exit the loop by pressing 'q'
+    if cv2.waitKey(1) == ord('q'):
+        break
+
+# Release the video capture and close windows
+video.release()
+cv2.destroyAllWindows()

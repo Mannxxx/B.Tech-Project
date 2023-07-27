@@ -1,9 +1,12 @@
 import cv2
 import numpy as np
 import datetime
+import threading
+from queue import Queue
 
 
-cap = cv2.VideoCapture('C:/Users/Mansi/Desktop/BTP/CODE/Videos/50rpm.mp4')
+
+cap = cv2.VideoCapture('C:/Users/Mansi/Desktop/BTP/CODE/Videos/120rpm.mp4')
 
 # tracker = cv2.TrackerMOSSE_create()
 # tracker = cv2.legacy.TrackerMOSSE_create()
@@ -98,12 +101,25 @@ def drawBox(frame, bbox):
         rTime = tstamp
 
 
+def buffer_frames():
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        video_buffer.put(frame)
 
-while True:
+
+
+def process_frames():
+     while True:
     # print(start_point)
     # print(end_point)
-    timer = cv2.getTickCount()
-    success , frame = cap.read()
+    # timer = cv2.getTickCount()
+    # success , frame = cap.read()
+    frame = video_buffer.get()
+    if frame is None:
+        break
+    
     
     # frame = cv2.resize(frame, (720, 720))
 
@@ -127,7 +143,19 @@ while True:
     if cv2.waitKey(1) & 0xff == ord('q'):
         break
 
+buffer_thread = threading.Thread(target=buffer_frames)
+buffer_thread.start()
 
+# Wait for some time to ensure frames are buffered
+# You can adjust this based on your requirements
+buffer_thread.join(timeout=2.0)
+
+# Start the frame processing thread
+process_thread = threading.Thread(target=process_frames)
+process_thread.start()
+
+# Wait for the processing thread to finish
+process_thread.join()
 
 # print("rev ",rev)
 
