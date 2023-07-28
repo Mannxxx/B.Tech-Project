@@ -55,7 +55,7 @@ def detect_point(video_path, marker_color=(0, 0, 255)):
             else:
                 # Calculate the distance between the current and previous points
                 distance = calculate_distance(current_point, prev_point)
-                print(distance)
+                print(distance)               
                 # Check for the completion of a rotation
                 if distance < 280 and not (prev_distance < 300):
                     # Distance started increasing, one rotation is completed
@@ -79,7 +79,7 @@ def detect_point(video_path, marker_color=(0, 0, 255)):
     if len(frames_per_rotation) > 0:
         average_frames_per_rotation = sum(frames_per_rotation) / len(frames_per_rotation)
         print(f'FPR: {average_frames_per_rotation}')
-        # Assuming the video is captured at 30 frames per second
+        # Assuming the video is captured at 30 frames per second         
         rpm = 60 / (average_frames_per_rotation / 60)
         return rpm
     else:

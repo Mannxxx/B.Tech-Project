@@ -7,8 +7,8 @@ cap = cv2.VideoCapture('C:/Users/Mansi/Desktop/BTP/CODE/Videos/50rpm.mp4')
 
 # tracker = cv2.TrackerMOSSE_create()
 # tracker = cv2.legacy.TrackerMOSSE_create()
-# tracker = cv2.legacy.TrackerCSRT_create()
-tracker = cv2.TrackerKCF_create()
+tracker = cv2.legacy.TrackerCSRT_create()
+# tracker = cv2.TrackerKCF_create()
 
 
 drawing = False

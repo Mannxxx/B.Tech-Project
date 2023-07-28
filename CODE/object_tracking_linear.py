@@ -3,7 +3,7 @@ import numpy as np
 import datetime
 
 
-cap = cv2.VideoCapture("C:/Users/Mansi/Desktop/BTP/CODE/Videos/speed2.mp4")
+cap = cv2.VideoCapture("C:/Users/Mansi/Desktop/BTP/CODE/Videos/80rpm.mp4")
 
 video_type = int(input('Select video type: \n 1. Linear \n 2. Rotational \n'))
 
