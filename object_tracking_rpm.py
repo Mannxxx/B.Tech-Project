@@ -3,7 +3,7 @@ import numpy as np
 import datetime
 
 
-cap = cv2.VideoCapture("../Videos_fan/speed1.mp4")
+cap = cv2.VideoCapture("./Videos_fan/speed1.mp4")
 
 # tracker = cv2.TrackerMOSSE_create()
 # tracker = cv2.legacy.TrackerMOSSE_create()
