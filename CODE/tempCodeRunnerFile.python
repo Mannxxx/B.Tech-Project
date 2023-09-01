@@ -1,93 +1,56 @@
 import cv2
 import numpy as np
+import csv
 
-def calculate_distance(point1, point2):
-    return np.linalg.norm(np.array(point1) - np.array(point2))
+# Replace 'input_video.mp4' with the path to your video file
+video_path = 'D:/BTP/CODE/Diving board/Diving.mp4'
+cap = cv2.VideoCapture(video_path)
 
-def detect_point(video_path, marker_color=(0, 0, 255)):
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        print("Error: Unable to open video file.")
-        return
+def nothing(x):
+    pass
 
-    # Convert the color to HSV for easier color detection
-    target_color = np.array(marker_color, dtype=np.uint8)
-    target_color = cv2.cvtColor(np.uint8([[target_color]]), cv2.COLOR_BGR2HSV)[0][0]
+cv2.namedWindow("Frame")
+cv2.createTrackbar("quality", "Frame", 2, 10, nothing)  # Adjust initial quality value
 
-    # Initialize variables for rotation measurement
-    prev_point = None
-    rotation_start_frame = 0
-    rotations = 0
-    frames_per_rotation = []
-    prev_distance = 0
+# Open a CSV file for writing the corner coordinates
+csv_file = open('corner_coordinates.csv', 'w', newline='')
+csv_writer = csv.writer(csv_file)
+csv_writer.writerow(['Frame', 'X', 'Y'])
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
+frame_count = 0
 
-        # Convert the frame to HSV for color detection
-        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # Create a mask for the target color (red in this example)
-        lower_bound = np.array([0, 100, 100])
-        upper_bound = np.array([10, 255, 255])
-        mask1 = cv2.inRange(hsv_frame, lower_bound, upper_bound)
+    quality = cv2.getTrackbarPos("quality", "Frame")
+    quality = quality / 100 if quality > 0 else 0.01
 
-        lower_bound = np.array([160, 100, 100])
-        upper_bound = np.array([179, 255, 255])
-        mask2 = cv2.inRange(hsv_frame, lower_bound, upper_bound)
+    corners = cv2.cornerHarris(gray, blockSize=2, ksize=3, k=0.04)
+    corners = cv2.dilate(corners, None)
 
-        mask = mask1 + mask2
+    corners = corners > corners.max() * quality
+    corner_indices = np.argwhere(corners)             
 
-        # Find contours of the target color in the mask
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for i, j in corner_indices:
+        x, y = j, i
+        cv2.circle(frame, (x, y), 1, (0, 0, 255), -1)
+        # Write corner coordinates to CSV
+        csv_writer.writerow([frame_count, x, y])
 
-        if contours:
-            # Assuming the largest contour is the target
-            contour = max(contours, key=cv2.contourArea)
-            (x, y), _ = cv2.minEnclosingCircle(contour)
-            current_point = (int(x), int(y))
+    cv2.imshow("Frame", frame)
 
-            if prev_point is None:
-                prev_point = current_point
-            
-            else:
-                # Calculate the distance between the current and previous points
-                distance = calculate_distance(current_point, prev_point)
-                print(distance)
-                # Check for the completion of a rotation
-                if distance < 80 and not (prev_distance < 80):
-                    # Distance started increasing, one rotation is completed
-                    frames_per_rotation.append(cap.get(cv2.CAP_PROP_POS_FRAMES) - rotation_start_frame)
-                    rotation_start_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
-                    rotations += 1
-                    print('here')
-                prev_distance = distance
-                
-            # Draw a circle at the detected point for visualization
-            cv2.circle(frame, current_point, 5, (0, 0, 255), -1)
+    key = cv2.waitKey(0)
+    if key == 27:
+        break
 
-        cv2.imshow("Frame", frame)
-        if cv2.waitKey(1) & 0xFF == 27:
-            break
+    frame_count += 1
 
-    cap.release()
-    cv2.destroyAllWindows()
+cap.release()
+cv2.destroyAllWindows()
 
-    if len(frames_per_rotation) > 0:
-        average_frames_per_rotation = sum(frames_per_rotation) / len(frames_per_rotation)
-        print(f'FPR: {average_frames_per_rotation}')
-        # Assuming the video is captured at 30 frames per second
-        rpm = 60 / (average_frames_per_rotation / 60)
-        return rpm
-    else:
-        return None
-
-# Example usage:
-video_path = "C:/Users/Mansi/Desktop/BTP/CODE/Videos/80rpm.mp4"
-rpm = detect_point(video_path)
-if rpm is not None:
-    print(f"Measured RPM: {rpm}")
-else:
-    print("Point detection failed or no rotations detected.")
+# Close the CSV file
+csv_file.close()

@@ -133,7 +133,7 @@ def main():
     global prev_frame, prev_blade_tips
 
     # Load the video
-    video_path = "Videos/speed2.mp4"
+    video_path = "D:/BTP/CODE/Videos/80rpm.mp4"
     cap = cv2.VideoCapture(video_path)
 
     while cap.isOpened():

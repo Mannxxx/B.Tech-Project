@@ -1,42 +1,74 @@
 import cv2
+import numpy as np
+import csv
 
-# Initialize the video capture
-video = cv2.VideoCapture('C:/Users/Mansi/Desktop/BTP/CODE/Videos/120rpm.mp4')
+# Replace 'input_video.mp4' with the path to your video file
+video_path = 'D:/BTP/CODE/Videos/track_video.mp4'
+cap = cv2.VideoCapture(video_path)
 
-# Create the KCF tracker
-tracker = cv2.TrackerKCF_create()
+def nothing(x):
+    pass
 
-# Read the first frame
-ret, frame = video.read()
+def select_roi(event, x, y, flags, param):
+    global roi_selected, roi_x, roi_y, roi_w, roi_h
 
-# Select the object to track
-bbox = cv2.selectROI(frame, False)
+    if event == cv2.EVENT_LBUTTONDOWN:
+        roi_selected = True
+        roi_x, roi_y = x, y
+    elif event == cv2.EVENT_LBUTTONUP:
+        roi_selected = False
+        roi_w, roi_h = x - roi_x, y - roi_y
 
-# Initialize the tracker with the selected bounding box
-tracker.init(frame, bbox)
+cv2.namedWindow("Frame")
+cv2.createTrackbar("quality", "Frame", 1, 100, nothing)
 
-# Main loop
+# Open a CSV file for writing the corner coordinates
+csv_file = open('corner_coordinates.csv', 'w', newline='')
+csv_writer = csv.writer(csv_file)
+csv_writer.writerow(['Frame', 'X', 'Y'])
+
+frame_count = 0
+roi_selected = False
+roi_x, roi_y, roi_w, roi_h = 0, 0, 0, 0
+
+cv2.setMouseCallback("Frame", select_roi)
+
 while True:
-    # Read the current frame
-    ret, frame = video.read()
+    ret, frame = cap.read()
     if not ret:
         break
+    
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # Update the tracker
-    success, bbox = tracker.update(frame)
+    quality = cv2.getTrackbarPos("quality", "Frame")
+    quality = quality / 100 if quality > 0 else 0.01
 
-    # Draw the bounding box
-    if success:
-        x, y, w, h = [int(v) for v in bbox]
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    if roi_selected:
+        roi = gray[roi_y:roi_y + roi_h, roi_x:roi_x + roi_w]
+        corners = cv2.goodFeaturesToTrack(roi, 50, quality, 20)
+        
+        if corners is not None:
+            corners = np.int0(corners)
 
-    # Display the frame
-    cv2.imshow('Frame', frame)
+            for corner in corners:
+                x, y = corner.ravel()
+                x += roi_x
+                y += roi_y
+                cv2.circle(frame, (x, y), 3, (0, 0, 255), -1)
+                
+                # Write corner coordinates to CSV
+                csv_writer.writerow([frame_count, x, y])
 
-    # Exit the loop by pressing 'q'
-    if cv2.waitKey(1) == ord('q'):
+    cv2.imshow("Frame", frame)
+
+    key = cv2.waitKey(1)
+    if key == 27:
         break
 
-# Release the video capture and close windows
-video.release()
+    frame_count += 1
+
+cap.release()
 cv2.destroyAllWindows()
+
+# Close the CSV file
+csv_file.close()
