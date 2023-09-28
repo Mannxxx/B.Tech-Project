@@ -86,8 +86,8 @@ def detect_point(video_path, marker_color=(0, 0, 255)):
         return None
 
 # Example usage:
-video_path = "D:/BTP/CODE/Diving board/Diving.mp4"
-rpm = detect_point(video_path)
+video_path = "D:/BTP/CODE/Videos/speed2.mp4"
+rpm = detect_point(video_path)                     
 if rpm is not None:
     print(f"Measured RPM: {rpm}")
 else:

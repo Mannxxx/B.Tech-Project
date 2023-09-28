@@ -4,15 +4,15 @@
 #  maxc - number of corners you want to find.
 #  Q - minimum quality of corner below which everyone is rejected
 #  maxD -  provide the minimum Euclidean distance between corners detected.
-
+             
 
 import cv2
 import numpy as np
 import csv
-
+         
 # Replace 'input_video.mp4' with the path to your video file
-video_path = 'D:/BTP/CODE/Diving board/Diving.mp4'
-cap = cv2.VideoCapture(video_path)
+video_path = "D:/BTP/CODE/Videos/gray_video.mp4"
+cap = cv2.VideoCapture(video_path)                                 
 
 def nothing(x):
     pass

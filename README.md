@@ -10,13 +10,13 @@ Mi-17 helicopter ->
 
 3 versions supplied by Russia (oldest version 1980s)
 
-BRD handles all the replacement of the different parts of helicopter
+BRD handles all the replacement of the different parts of the helicopter
 
 
 
 Main rotor blade: Moves up down, right left )-> 5 blades
 
-Tail rotor blade : To stop the rotation motion
+Tail rotor blade: To stop the rotation motion
 
 
 
@@ -212,9 +212,106 @@ The code combines mouse event handling, object tracking, and RPM calculation. Th
 
 
 
+# Fast-Moving Object detection(FMO)
 
 
 
+```python
+import cv2
+import numpy as np
+
+def calculate_distance(point1, point2):
+    return np.linalg.norm(np.array(point1) - np.array(point2))
+
+def detect_point(video_path, marker_color=(0, 0, 255)):
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print("Error: Unable to open video file.")
+        return
+
+    # Convert the color to HSV for easier color detection
+    target_color = np.array(marker_color, dtype=np.uint8)
+    target_color = cv2.cvtColor(np.uint8([[target_color]]), cv2.COLOR_BGR2HSV)[0][0]
+
+    # Initialize variables for rotation measurement
+    prev_point = None
+    rotation_start_frame = 0
+    rotations = 0
+    frames_per_rotation = []
+    prev_distance = 0
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Convert the frame to HSV for color detection
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        # Create a mask for the target color (red in this example)
+        lower_bound = np.array([150, 50, 50])
+        upper_bound = np.array([180, 255, 255])
+        mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
+
+        # lower_bound = np.array([160, 100, 100])            
+        # upper_bound = np.array([179, 255, 255])
+        # mask2 = cv2.inRange(hsv_frame, lower_bound, upper_bound)
+
+        # mask = mask1 + mask2
+
+        # Find contours of the target color in the mask
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if contours:
+            # Assuming the largest contour is the target
+            contour = max(contours, key=cv2.contourArea)
+            (x, y), _ = cv2.minEnclosingCircle(contour)
+            current_point = (int(x), int(y))
+
+            if prev_point is None:
+                prev_point = current_point
+                                 
+            else:
+                # Calculate the distance between the current and previous points
+                distance = calculate_distance(current_point, prev_point)
+                print(distance)               
+                # Check for the completion of a rotation
+                if distance < 300 and not (prev_distance < 300):
+                    # Distance started increasing, one rotation is completed
+                    frames_per_rotation.append(cap.get(cv2.CAP_PROP_POS_FRAMES) - rotation_start_frame)
+                    rotation_start_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
+                    rotations += 1
+                    print('here')
+                prev_distance = distance
+                
+            # Draw a circle at the detected point for visualization
+            cv2.circle(frame, current_point, 5, (225, 0, 225), -1)
+            cv2.circle(frame, current_point, 20, (225, 0, 225), 2)
+
+        cv2.imshow("Frame", frame)
+        if cv2.waitKey(0) & 0xFF == 27:
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+    if len(frames_per_rotation) > 0:
+        average_frames_per_rotation = sum(frames_per_rotation) / len(frames_per_rotation)
+        print(f'FPR: {average_frames_per_rotation}')
+        # Assuming the video is captured at 30 frames per second         
+        rpm = 60 / (average_frames_per_rotation / 60)
+        return rpm
+    else:
+        return None
+
+# Example usage:
+video_path = "D:/BTP/CODE/Diving_board/Diving.mp4"
+rpm = detect_point(video_path)
+if rpm is not None:
+    print(f"Measured RPM: {rpm}")
+else:
+    print("Point detection failed or no rotations detected.")             
+```
 
 
 
@@ -508,321 +605,211 @@ cv2.destroyAllWindows()
 
 # Camera Calibration
 
-The process of camera calibration involves using chessboard images captured from different angles and positions. OpenCV's functions are employed to detect the corners of the chessboard within the images. These detected corners are then used to calculate crucial parameters, including the camera matrix, distortion coefficients, rotation vectors, and translation vectors. These parameters provide a detailed description of the camera's characteristics and enable accurate image correction.
+In order to use the camera as a visual sensor, we should know the parameters of the camera. **Camera Calibration** is nothing but estimating the parameters of a camera, parameters about the camera are required to determine an accurate relationship between a 3D point in the real world and its corresponding 2D projection (pixel) in the image captured by that calibrated camera.
+
+We need to consider both internal parameters like focal length, optical center, and radial distortion coefficients of the lens etc., and external parameters like rotation and translation of the camera with respect to some real world coordinate system.
+
+The process of camera calibration involves using chessboard images captured from different angles and positions. OpenCV's functions are employed to detect the corners of the chessboard within the images. These detected corners are then used to calculate crucial parameters, including the camera matrix, distortion coefficients, rotation vectors, and translation vectors. 
 
 
 
-![image-20230831231908451](C:\Users\Mansi\AppData\Roaming\Typora\typora-user-images\image-20230831231908451.png)
+<img src="C:\Users\Mansi\AppData\Roaming\Typora\typora-user-images\image-20230831231908451.png" alt="image-20230831231908451" style="zoom:50%;" />
 
 ![image-20230831231918571](C:\Users\Mansi\AppData\Roaming\Typora\typora-user-images\image-20230831231918571.png)
 
-# Introduction
-
-Some pinhole cameras introduces a lot of distortion to images. Two major distortions are radial distortion and tangential distortion.
-
-#### Tangential Distortion
-
-Tangential distortion occurs because image taking lense is not aligned perfectly parallel to the imaging plane. So some areas in image may look nearer than expected. It is represented as below:
 
 
+## **Concepts and Importance:**
 
-#### Radial Distortion
+1. **Distortion:** Cameras introduce distortion due to lens imperfections. The two main types are radial distortion (straight lines appear curved) and tangential distortion (image appears skewed). These distortions can significantly affect image analysis and 3D reconstruction accuracy.
+2. **Intrinsic Parameters:** Intrinsic parameters are camera-specific properties, including focal length (fx, fy) and optical centers (cx, cy). They form the camera matrix and help correct distortions. A common representation is the pinhole camera model.
+3. **Extrinsic Parameters:** Extrinsic parameters involve rotation and translation vectors that position the camera's coordinate system relative to a world coordinate system. These parameters are crucial for 3D scene reconstruction.
+4. **Calibration Pattern:** A known pattern (e.g., chessboard) is placed in front of the camera. The pattern's 3D coordinates and corresponding 2D image coordinates are used to calibrate the camera.
+5. **Re-projection Error:** After calibration, re-projected image points are compared with detected image points. Lower re-projection error indicates more accurate calibration.
 
-Similarly, another distortion is the radial distortion.Due to radial distortion, straight lines will appear curved. Its effect is more as we move away from the center of image.
+**Mathematical Formulations:**
+
+1. **Radial Distortion:** Radial distortion is approximated using a polynomial expression:
+
+   ```
+   makefileCopy codex_distorted = x * (1 + k1 * r^2 + k2 * r^4 + k3 * r^6)
+   y_distorted = y * (1 + k1 * r^2 + k2 * r^4 + k3 * r^6)
+   ```
+
+2. **Tangential Distortion:** Tangential distortion is caused by lens misalignment:
+
+   ```
+   cssCopy codex_distorted = x + [2 * p1 * x * y + p2 * (r^2 + 2 * x^2)]
+   y_distorted = y + [p1 * (r^2 + 2 * y^2) + 2 * p2 * x * y]
+   ```
+
+3. **Camera Matrix:** The camera matrix combines intrinsic parameters and maps 3D points to 2D image coordinates:
+
+   ```
+   cssCopy codecamera_matrix = [fx 0  cx]
+                   [0  fy cy]
+                   [0  0  1 ]
+   ```
+
+**Calibration Techniques:**
+
+OpenCV provides tools for camera calibration and undistortion:
+
+1. **Finding Corners:** Use functions like `findChessboardCorners()` or `findCirclesGrid()` to locate calibration pattern corners in images.
+2. **Refining Corners:** Improve corner accuracy using `cornerSubPix()` for sub-pixel accuracy.
+3. **Calibration:** Use `calibrateCamera()` to compute intrinsic/extrinsic parameters, distortion coefficients, and re-projection errors.
+4. **Undistortion:** Correct distortion using methods like `undistort()` or remapping with `initUndistortRectifyMap()` and `remap()`.
+
+**Re-projection Error Calculation:**
+
+Calculate the re-projection error to assess calibration quality. For each image:
+
+1. Project object points using `projectPoints()` to get re-projected image points.
+2. Calculate the L2 norm between detected image points and re-projected points.
+3. Sum errors for all images and find the mean error.
 
 
 
-we need to find five parameters, known as distortion coefficients given by:
+### **Camera Calibration can be done in a step-by-step approach:**
 
+- **Step 1:** First define real world coordinates of 3D points using known size of checkerboard pattern.
+- **Step 2:** Different viewpoints of check-board image is captured.
+- **Step 3:** *findChessboardCorners()* is a method in *OpenCV* and used to find pixel coordinates *(u, v)* for each 3D point in different images
+- **Step 4:** Then *calibrateCamera()* method is used to find camera parameters.
 
+It will take our calculated *(threedpoints, twodpoints, grayColor.shape[::-1], None, None)* as parameters and returns list having elements as *Camera matrix, Distortion coefficient, Rotation Vectors*, and *Translation Vectors.* 
 
-In addition to this, we need to find a few more information, like intrinsic and extrinsic parameters of a camera. Intrinsic parameters are specific to a camera. It includes information like focal length ( fx,fy), optical centers ( cx,cy) etc. It is also called camera matrix. It depends on the camera only, so once calculated, it can be stored for future purposes. It is expressed as a 3x3 matrix:
-
-
-
-Extrinsic parameters corresponds to rotation and translation vectors which translates a coordinates of a 3D point to a coordinate system. Here the presence of w is explained by the use of homography coordinate system (and w=Z).We find some specific points in it ( square corners in chess board). We know its coordinates in real world space and we know its coordinates in image. With these data, the distortion coefficients could be solved. we need atleast 10 test patterns.
-
-20 sample images of chess board are given. Consider just one image of a chess board. Important input datas needed for camera calibration is a set of 3D real world points and its corresponding 2D image points. 2D image points are OK which we can easily find from the image. These image points are locations where two black squares touch each other in chess boards
-What about the 3D points from real world space? Those images are taken from a static camera and chess boards are placed at different locations and orientations. So we need to know (X,Y,Z) values. But for simplicity, we can say chess board was kept stationary at XY plane, (so Z=0 always) and camera was moved accordingly. This consideration helps us to find only X,Y values. In this case, the results we get will be in the scale of size of chess board square.
-3D points are called object points and 2D image points are called image points.
-
-## Setup
-
-To find pattern in chess board, we use the function, cv2.findChessboardCorners(). We also need to pass what kind of pattern we are looking, like 8x8 grid, 5x5 grid etc. In this example, we use 11x12 grid.It returns the corner points and retval which will be True if pattern is obtained. These corners will be placed in an order (from left-to-right, top-to-bottom)
-
-```
-#Import numpy, openCV environment
-import numpy as np
+```python
+# Import required modules
 import cv2
+import numpy as np
+import os
 import glob
-%matplotlib inline
 
-# termination criteria
-criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 0.001)
 
-# Define the chess board rows and columns
-rows = 12
-cols = 12
+# Define the dimensions of checkerboard
+CHECKERBOARD = (6, 9)
 
-# prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
-objectPoints = np.zeros((rows * cols, 3), np.float32)
-objectPoints[:, :2] = np.mgrid[0:rows, 0:cols].T.reshape(-1, 2)
-objectPoints.shape
-```
 
+# stop the iteration when specified
+# accuracy, epsilon, is reached or
+# specified number of iterations are completed.
+criteria = (cv2.TERM_CRITERIA_EPS +
+			cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
 
-```
-(144, 3)
-```
+# Vector for 3D points
+threedpoints = []
 
+# Vector for 2D points
+twodpoints = []
 
 
-```
-# Arrays to store object points and image points from all the images.
-objectPointsArray = [] # 3d point in real world space
-imgPointsArray = [] # 2d points in image plane.
-```
+# 3D points real world coordinates
+objectp3d = np.zeros((1, CHECKERBOARD[0]
+					* CHECKERBOARD[1],
+					3), np.float32)
+objectp3d[0, :, :2] = np.mgrid[0:CHECKERBOARD[0],
+							0:CHECKERBOARD[1]].T.reshape(-1, 2)
+prev_img_shape = None
 
 
+# Extracting path of individual image stored
+# in a given directory. Since no path is
+# specified, it will take current directory
+# jpg files alone
+images = glob.glob('D:/BTP/CODE/Camera calibration/*.jpg')
 
-```
-glob.glob('calib_example\*.tif')
-```
+for filename in images:
+	image = cv2.imread(filename)
+	grayColor = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+	# Find the chess board corners
+	# If desired number of corners are
+	# found in the image then ret = true
+	ret, corners = cv2.findChessboardCorners(
+					grayColor, CHECKERBOARD,
+					cv2.CALIB_CB_ADAPTIVE_THRESH
+					+ cv2.CALIB_CB_FAST_CHECK +
+					cv2.CALIB_CB_NORMALIZE_IMAGE)
 
+	# If desired number of corners can be detected then,
+	# refine the pixel coordinates and display
+	# them on the images of checker board
+	if ret == True:
+		threedpoints.append(objectp3d)
 
-```
-['calib_example\\Image1.tif',
- 'calib_example\\Image10.tif',
- 'calib_example\\Image11.tif',
- 'calib_example\\Image12.tif',
- 'calib_example\\Image13.tif',
- 'calib_example\\Image14.tif',
- 'calib_example\\Image15.tif',
- 'calib_example\\Image16.tif',
- 'calib_example\\Image17.tif',
- 'calib_example\\Image18.tif',
- 'calib_example\\Image19.tif',
- 'calib_example\\Image2.tif',
- 'calib_example\\Image20.tif',
- 'calib_example\\Image3.tif',
- 'calib_example\\Image4.tif',
- 'calib_example\\Image5.tif',
- 'calib_example\\Image6.tif',
- 'calib_example\\Image7.tif',
- 'calib_example\\Image8.tif',
- 'calib_example\\Image9.tif']
-```
+		# Refining pixel coordinates
+		# for given 2d points.
+		corners2 = cv2.cornerSubPix(
+			grayColor, corners, (11, 11), (-1, -1), criteria)
 
+		twodpoints.append(corners2)
 
+		# Draw and display the corners
+		image = cv2.drawChessboardCorners(image,
+										CHECKERBOARD,
+										corners2, ret)
 
-Runing the foloowing code returns the corner points and retval if pattern is obtained.
-Here is an example of the result: [![Image](https://github.com/chenmengdan/Camera-Calibration/raw/master/example_points.png)](https://github.com/chenmengdan/Camera-Calibration/blob/master/example_points.png)
+	cv2.imshow('img', image)
+	cv2.waitKey(0)
 
-```
-# Loop over the image files
-for path in glob.glob('calib_example\*.tif'):
-    # Load the image and convert it to gray scale
-    img = cv2.imread(path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Find the chess board corners
-    ret, corners = cv2.findChessboardCorners(gray, (rows, cols), None)
-
-    # Make sure the chess board pattern was found in the image
-    if ret:
-        # Refine the corner position
-        corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-        
-        # Add the object points and the image points to the arrays
-        objectPointsArray.append(objectPoints)
-        imgPointsArray.append(corners)
-
-        # Draw the corners on the image
-        cv2.drawChessboardCorners(img, (rows, cols), corners, ret)
-    
-    # Display the image
-    cv2.imshow('chess board', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-```
-
-
-
-### Calibration
-
-Now we have our object points and image points we are ready to go for calibration. For that we use the function, ***cv2.calibrateCamera()***. It returns the camera matrix, distortion coefficients, rotation and translation vectors etc.
-
-```
-# Calibrate the camera and save the results
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objectPointsArray, imgPointsArray, gray.shape[::-1], None, None)
-np.savez('calib.npz', mtx=mtx, dist=dist, rvecs=rvecs, tvecs=tvecs)
-```
-
-
-
-```
-#dist Coef.
-dist
-```
-
-
-
-```
-array([[-2.47543410e-01,  7.14418145e-02, -1.83688275e-04,
-        -2.74411144e-04,  1.05769974e-01]])
-```
-
-
-
-```
-#show the camera matrix
-print(mtx)
-```
-
-
-
-```
-[[658.98431343   0.         302.50047925]
- [  0.         659.73448089 243.58638325]
- [  0.           0.           1.        ]]
-```
-
-
-
-### Re-projection Error
-
-Re-projection error gives a good estimation of just how exact is the found parameters. This should be as close to zero as possible. Given the intrinsic, distortion, rotation and translation matrices, we first transform the object point to image point using ***cv2.projectPoints()***. Then we calculate the absolute norm between what we got with our transformation and the corner finding algorithm. To find the average error we calculate the arithmetical mean of the errors calculate for all the calibration images.
-
-```
-# Print the camera calibration error
-error = 0
-
-for i in range(len(objectPointsArray)):
-    imgPoints, _ = cv2.projectPoints(objectPointsArray[i], rvecs[i], tvecs[i], mtx, dist)
-    error += cv2.norm(imgPointsArray[i], imgPoints, cv2.NORM_L2) / len(imgPoints)
-
-print("Total error: ", error / len(objectPointsArray))
-```
-
-
-
-```
-Total error:  0.01804429700829216
-```
-
-
-
-### Undistortion
-
-We have got what we were trying. Now we can take an image and undistort it. OpenCV comes with two methods, we will see both. But before that, we can refine the camera matrix based on a free scaling parameter using ***cv2.getOptimalNewCameraMatrix()***. If the scaling parameter alpha=0, it returns undistorted image with minimum unwanted pixels. So it may even remove some pixels at image corners. If alpha=1, all pixels are retained with some extra black images. It also returns an image ROI which can be used to crop the result.
-
-**Take a new image (Image2.tif in this case.)**
-
-```
-# Load one of the test images
-img = cv2.imread('calib_example\Image1.tif')
-h, w = img.shape[:2]
-img.shape
-```
-
-
-
-```
-(480, 640, 3)
-```
-
-
-
-```
-# Obtain the new camera matrix and undistort the image
-newCameraMtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
-#undistortedImg = cv2.undistort(img, mtx, dist, None, newCameraMtx)
-```
-
-
-
-```
-print(newCameraMtx)
-```
-
-
-
-```
-[[601.7623291    0.         300.82953281]
- [  0.         599.89715576 243.63463233]
- [  0.           0.           1.        ]]
-```
-
-
-
-```
-roi
-```
-
-
-
-```
-(9, 14, 621, 452)
-```
-
-
-
-#### Two methods to undistort image.
-
-#### 1. Using cv2.undistort()
-
-This is the shortest path. Just call the function and use ROI obtained above to crop the result.
-use **cv2.undistort()** to undistort the image. and compare it with the original image.
-
-```
-# undistort
-dst1 = cv2.undistort(src=img, cameraMatrix=mtx, distCoeffs=dist,newCameraMatrix=newCameraMtx)
-#cv2.imwrite('calibresult.png', dst1)
-cv2.imshow('chess board', np.hstack((img, dst1)))
-cv2.waitKey(0)
 cv2.destroyAllWindows()
+
+h, w = image.shape[:2]
+
+
+# Perform camera calibration by
+# passing the value of above found out 3D points (threedpoints)
+# and its corresponding pixel coordinates of the
+# detected corners (twodpoints)
+ret, matrix, distortion, r_vecs, t_vecs = cv2.calibrateCamera(
+	threedpoints, twodpoints, grayColor.shape[::-1], None, None)
+
+
+# Displaying required output
+print(" Camera matrix:")
+print(matrix)
+
+print("\n Distortion coefficient:")
+print(distortion)
+
+print("\n Rotation Vectors:")
+print(r_vecs)
+
+print("\n Translation Vectors:")
+print(t_vecs)
+
+
+------------------------------------------------------------------------------------------------------------
+0utput window
+------------------------------------------------------------------------------------------------------------
+ 
+ Camera matrix:
+[[20.10654304  0.         84.16362263]
+ [ 0.         20.34239482 95.42267081]
+ [ 0.          0.          1.        ]]
+
+ Distortion coefficient:
+[[-9.40501496e-04  3.73198946e-05 -2.32754445e-03  3.95213785e-04
+  -6.01340412e-07]]
+
+ Rotation Vectors:
+(array([[-0.04742568],
+       [ 0.02932197],
+       [ 1.50950267]]), array([[-0.07882398],
+       [-0.00961833],
+       [ 3.07805624]]), array([[-0.01784273],
+       [ 0.04617962],
+       [-0.07272072]]))
+
+ Translation Vectors:
+(array([[ 4.63365547],
+       [-3.7646618 ],
+       [ 1.35562517]]), array([[2.32806935],
+       [3.99318851],
+       [1.36446905]]), array([[-3.16534453],
+       [-3.45998477],
+       [ 1.38547247]]))
 ```
 
-
-
-Crop the undistorted image, and show the result
-
-```
-# Crop the undistorted image
-x, y, w, h = roi
-dst1_croped = dst1 [y:y + h, x:x + w]
-#dst2 = dst1 [y:y+h, x:x+w]
-cv2.imshow('chess board', dst1_croped)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-```
-
-
-
-#### 2. Using remapping
-
-This is curved path. First find a mapping function from distorted image to undistorted image. Then use the remap function.
-
-```
-# undistort
-mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newCameraMtx, (w,h), 5)
-dst2 = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR)
-cv2.imshow('chess board', dst2)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-```
-
-
-
-Crop the undistorted image, and show the result
-
-```
-# crop the image
-x, y, w, h = roi
-dst2_croped = dst2[y:y+h, x:x+w]
-cv2.imshow('chess board', dst2_croped)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-```

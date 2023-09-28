@@ -41,7 +41,7 @@ def detect_fan_blade_tips(video_path):
 
 if __name__ == "__main__":
     # Replace 'your_video_file_path.mp4' with the actual path to your video file
-    video_file_path = "D:/BTP/CODE/Videos/track_video.mp4"
+    video_file_path = "D:/BTP/CODE/Videos/50rpm.mp4"
     detect_fan_blade_tips(video_file_path)
 
 
