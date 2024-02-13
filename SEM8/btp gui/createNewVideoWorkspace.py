@@ -29,31 +29,68 @@ class VideoRecorderWindow(tk.Toplevel):
 
     def create_widgets(self):
         navbar_frame = ttk.Frame(self)
-        navbar_frame.pack(side="top", fill="x")
+        navbar_frame.pack(side="top", padx=10, pady=10)
 
         self.device_var = tk.StringVar()
         self.device_var.set("Select Device")
         select_device_menu = ttk.OptionMenu(navbar_frame, self.device_var, "Select Device", "Device 1", "Device 2", "Device 3")
-        select_device_menu.pack(side="left", padx=10, pady=5)
+        select_device_menu.pack(side="left", padx=5, pady=5)
 
         start_button = ttk.Button(navbar_frame, text="Start Recording")
-        start_button.pack(side="left", padx=10, pady=5)
+        start_button.pack(side="left", padx=5, pady=5)
 
         stop_button = ttk.Button(navbar_frame, text="Stop Recording")
-        stop_button.pack(side="left", padx=10, pady=5)
+        stop_button.pack(side="left", padx=5, pady=5)
 
         pause_button = ttk.Button(navbar_frame, text="Pause Recording")
-        pause_button.pack(side="left", padx=10, pady=5)
+        pause_button.pack(side="left", padx=5, pady=5)
 
         self.camera_frame = ttk.Frame(self)
         self.camera_frame.pack(fill="both", expand=True)
 
         # Placeholder image for camera frame
-        self.placeholder_image = Image.open("placeholder_image.png")
+        self.placeholder_image = Image.open("play.ico")
         self.placeholder_image = self.placeholder_image.resize((640, 480), Image.Resampling.LANCZOS)
         self.placeholder_photo = ImageTk.PhotoImage(self.placeholder_image)
         self.camera_label = ttk.Label(self.camera_frame, image=self.placeholder_photo)
         self.camera_label.pack(fill="both", expand=True)
+
+class VideoPlayerWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Video Player")
+        self.geometry("800x600")
+        self.parent = parent
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Buttons for controlling video
+        button_frame = ttk.Frame(self)
+        button_frame.pack(side="top", padx=10, pady=10)
+
+        upload_button = ttk.Button(button_frame, text="Upload Video")
+        upload_button.pack(side="left", padx=5, pady=5)
+
+        start_button = ttk.Button(button_frame, text="Start Video")
+        start_button.pack(side="left", padx=5, pady=5)
+
+        pause_button = ttk.Button(button_frame, text="Pause Video")
+        pause_button.pack(side="left", padx=5, pady=5)
+
+        close_button = ttk.Button(button_frame, text="Close Video", command=self.destroy)
+        close_button.pack(side="left", padx=5, pady=5)
+
+        # Frame to display video or thumbnail
+        self.video_frame = ttk.Frame(self, width=640, height=480)
+        self.video_frame.pack(side="top", padx=10, pady=10)
+
+        # Placeholder image for video frame
+        self.thumbnail_image = Image.open("play.ico")  # Replace with your thumbnail image
+        self.thumbnail_image = self.thumbnail_image.resize((640, 480), Image.Resampling.LANCZOS)
+        self.thumbnail_photo = ImageTk.PhotoImage(self.thumbnail_image)
+        self.video_label = ttk.Label(self.video_frame, image=self.thumbnail_photo)
+        self.video_label.pack(fill="both", expand=True)
 
 def create_workspace_screen():
     root = tk.Tk()
@@ -213,8 +250,14 @@ def create_workspace_screen():
     # create_video_button = ttk.Button(root, text="Create New Video", style="LargeButton.TButton")
     # create_video_button.place(x=x_start, y=y_start)
 
-    upload_video_button = ttk.Button(root, text="Upload New Video", style="LargeButton.TButton")
+    def open_video_player_window():
+        video_player_window = VideoPlayerWindow(root)
+
+    upload_video_button = ttk.Button(root, text="Upload New Video", style="LargeButton.TButton", command=open_video_player_window)
     upload_video_button.place(x=x_start + button_width + spacing, y=y_start)
+
+    # upload_video_button = ttk.Button(root, text="Upload New Video", style="LargeButton.TButton")
+    # upload_video_button.place(x=x_start + button_width + spacing, y=y_start)
 
     recently_closed_button = ttk.Button(root, text="Open Recently Closed", style="LargeButton.TButton")
     recently_closed_button.place(x=x_start + 2*(button_width + spacing), y=y_start)
