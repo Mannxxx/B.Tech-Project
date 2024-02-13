@@ -1,61 +1,76 @@
-############# Change video size with the workspace size #####################
-
 import tkinter as tk
-from tkinter import filedialog
-import vlc
+from tkinter import ttk, filedialog
+from PIL import Image, ImageTk
+import cv2
 
-class VLCPlayer:
-    def __init__(self, master):
-        self.master = master
-        self.master.title("BladeSense Workspace")
-
-        self.instance = vlc.Instance('--no-xlib')
-        self.player = self.instance.media_player_new()
-        self.file_path = None  # Store the selected file path
+class VideoPlayerWindow(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Video Player")
+        self.geometry("800x600")
 
         self.create_widgets()
 
     def create_widgets(self):
-        # Video Frame
-        self.video_frame = tk.Frame(self.master)
-        self.video_frame.pack(fill=tk.BOTH, expand=True)
+        # Frame to display video or thumbnail
+        self.video_frame = ttk.Frame(self, width=640, height=480)
+        self.video_frame.pack(side="top", padx=10, pady=10)
 
-        # VLC Widget
-        self.vlc_player = self.instance.media_player_new()
-        self.vlc_player.set_hwnd(self.video_frame.winfo_id())
+        # Button frame
+        self.button_frame = ttk.Frame(self)
+        self.button_frame.pack(side="top", padx=10, pady=10)
 
-        # Play Button
-        self.play_button = tk.Button(self.master, text="Play", command=self.play)
-        self.play_button.pack(side=tk.LEFT)
+        # Video player
+        self.cap = None
 
-        # Pause Button
-        self.pause_button = tk.Button(self.master, text="Pause", command=self.pause)
-        self.pause_button.pack(side=tk.LEFT)
+        # Buttons
+        upload_button = ttk.Button(self.button_frame, text="Upload Video", command=self.upload_video)
+        upload_button.pack(side="left", padx=5, pady=5)
 
-        # Stop Button
-        self.stop_button = tk.Button(self.master, text="Stop", command=self.stop)
-        self.stop_button.pack(side=tk.LEFT)
+        close_button = ttk.Button(self.button_frame, text="Close Window", command=self.destroy)
+        close_button.pack(side="left", padx=5, pady=5)
 
-        # Load Video Button
-        self.load_button = tk.Button(self.master, text="Load Video", command=self.load_video)
-        self.load_button.pack(side=tk.LEFT)
+    def upload_video(self):
+        file_path = filedialog.askopenfilename(title="Select Video File", filetypes=[("Video files", "*.mp4;*.avi;*.mkv;*.mov")])
+        if file_path:
+            # Open the selected video file
+            self.cap = cv2.VideoCapture(file_path)
+            self.play_video()
 
-    def play(self):
-        if self.file_path:
-            media = self.instance.media_new(self.file_path)
-            self.player.set_media(media)
-            self.player.play()
+    def play_video(self):
+        if self.cap is not None:
+            ret, frame = self.cap.read()
+            if ret:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frame = Image.fromarray(frame)
+                frame = self.resize_image(frame, self.video_frame.winfo_width(), self.video_frame.winfo_height())
+                frame = ImageTk.PhotoImage(frame)
+                if hasattr(self, 'video_label'):
+                    self.video_label.configure(image=frame)
+                    self.video_label.image = frame
+                else:
+                    self.video_label = ttk.Label(self.video_frame, image=frame)
+                    self.video_label.pack(fill="both", expand=True)
+                self.video_label.after(10, self.play_video)  # Update video frame every 10 milliseconds
 
-    def pause(self):
-        self.player.pause()
+    def close_video(self):
+        # Close the video (release resources)
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
 
-    def stop(self):
-        self.player.stop()
-
-    def load_video(self):
-        self.file_path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4;*.avi")])
+    def resize_image(self, image, width, height):
+        """
+        Resize the given image to fit within the specified width and height
+        while maintaining the aspect ratio.
+        """
+        aspect_ratio = image.width / image.height
+        if width / height > aspect_ratio:
+            width = int(height * aspect_ratio)
+        else:
+            height = int(width / aspect_ratio)
+        return image.resize((width, height), Image.Resampling.LANCZOS)
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    player = VLCPlayer(root)
-    root.mainloop()
+    app = VideoPlayerWindow()
+    app.mainloop()
