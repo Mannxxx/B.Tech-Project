@@ -18,6 +18,43 @@ button_height = 30  # Adjust as needed
 # def select_bluetooth_device(device):
 #     print(f"Selected Bluetooth device: {device}")
 
+class VideoRecorderWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Video Recorder")
+        self.geometry("800x600")
+        self.parent = parent
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        navbar_frame = ttk.Frame(self)
+        navbar_frame.pack(side="top", fill="x")
+
+        self.device_var = tk.StringVar()
+        self.device_var.set("Select Device")
+        select_device_menu = ttk.OptionMenu(navbar_frame, self.device_var, "Select Device", "Device 1", "Device 2", "Device 3")
+        select_device_menu.pack(side="left", padx=10, pady=5)
+
+        start_button = ttk.Button(navbar_frame, text="Start Recording")
+        start_button.pack(side="left", padx=10, pady=5)
+
+        stop_button = ttk.Button(navbar_frame, text="Stop Recording")
+        stop_button.pack(side="left", padx=10, pady=5)
+
+        pause_button = ttk.Button(navbar_frame, text="Pause Recording")
+        pause_button.pack(side="left", padx=10, pady=5)
+
+        self.camera_frame = ttk.Frame(self)
+        self.camera_frame.pack(fill="both", expand=True)
+
+        # Placeholder image for camera frame
+        self.placeholder_image = Image.open("placeholder_image.png")
+        self.placeholder_image = self.placeholder_image.resize((640, 480), Image.Resampling.LANCZOS)
+        self.placeholder_photo = ImageTk.PhotoImage(self.placeholder_image)
+        self.camera_label = ttk.Label(self.camera_frame, image=self.placeholder_photo)
+        self.camera_label.pack(fill="both", expand=True)
+
 def create_workspace_screen():
     root = tk.Tk()
     root.title("BladeSense")
@@ -166,9 +203,15 @@ def create_workspace_screen():
     button_width = 150  
     spacing = 20
 
-    # Create and place buttons
-    create_video_button = ttk.Button(root, text="Create New Video", style="LargeButton.TButton")
+    def create_video_window():
+        video_window = VideoRecorderWindow(root)
+
+    create_video_button = ttk.Button(root, text="Create New Video", style="LargeButton.TButton", command=create_video_window)
     create_video_button.place(x=x_start, y=y_start)
+
+    # Create and place buttons
+    # create_video_button = ttk.Button(root, text="Create New Video", style="LargeButton.TButton")
+    # create_video_button.place(x=x_start, y=y_start)
 
     upload_video_button = ttk.Button(root, text="Upload New Video", style="LargeButton.TButton")
     upload_video_button.place(x=x_start + button_width + spacing, y=y_start)
