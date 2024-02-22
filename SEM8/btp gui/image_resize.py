@@ -7,13 +7,13 @@ class VideoPlayerWindow(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Video Player")
-        self.geometry("800x600")
+        self.geometry("1200x750")
 
         self.create_widgets()
 
     def create_widgets(self):
         # Frame to display video or thumbnail
-        self.video_frame = ttk.Frame(self, width=640, height=480)
+        self.video_frame = ttk.Frame(self, width=640, height=580)
         self.video_frame.pack(side="top", padx=10, pady=10)
 
         # Button frame
@@ -22,13 +22,24 @@ class VideoPlayerWindow(tk.Tk):
 
         # Video player
         self.cap = None
+        self.frame_number = tk.IntVar(value=0)
 
         # Buttons
         upload_button = ttk.Button(self.button_frame, text="Upload Video", command=self.upload_video)
         upload_button.pack(side="left", padx=5, pady=5)
 
+        previous_button = ttk.Button(self.button_frame, text="Previous Frame", command=self.previous_frame)
+        previous_button.pack(side="left", padx=5, pady=5)
+
+        next_button = ttk.Button(self.button_frame, text="Next Frame", command=self.next_frame)
+        next_button.pack(side="left", padx=5, pady=5)
+
         close_button = ttk.Button(self.button_frame, text="Close Window", command=self.destroy)
         close_button.pack(side="left", padx=5, pady=5)
+
+        # Label to display frame number
+        self.frame_label = ttk.Label(self.button_frame, textvariable=self.frame_number)
+        self.frame_label.pack(side="left", padx=5, pady=5)
 
     def upload_video(self):
         file_path = filedialog.askopenfilename(title="Select Video File", filetypes=[("Video files", "*.mp4;*.avi;*.mkv;*.mov")])
@@ -51,7 +62,18 @@ class VideoPlayerWindow(tk.Tk):
                 else:
                     self.video_label = ttk.Label(self.video_frame, image=frame)
                     self.video_label.pack(fill="both", expand=True)
+                self.frame_number.set(int(self.cap.get(cv2.CAP_PROP_POS_FRAMES)))  # Update frame number
                 self.video_label.after(10, self.play_video)  # Update video frame every 10 milliseconds
+
+    def previous_frame(self):
+        if self.cap is not None and self.frame_number.get() > 1:
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_number.get() - 2)
+            self.frame_number.set(self.frame_number.get() - 2)
+            self.play_video()
+
+    def next_frame(self):
+        if self.cap is not None:
+            self.play_video()
 
     def close_video(self):
         # Close the video (release resources)
