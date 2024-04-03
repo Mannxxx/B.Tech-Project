@@ -18,42 +18,40 @@ button_height = 30  # Adjust as needed
 # def select_bluetooth_device(device):
 #     print(f"Selected Bluetooth device: {device}")
 
-class VideoPlayerWindow(tk.Toplevel):
+class VideoPlayerWindow(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("Video Player")
-        self.geometry("800x600")
         self.parent = parent
 
         self.create_widgets()
-        
+
     def create_widgets(self):
-            # Buttons for controlling video
-            button_frame = ttk.Frame(self)
-            button_frame.pack(side="top", padx=10, pady=10)
+        # Frame for controlling video
+        control_frame = ttk.Frame(self)
+        control_frame.pack(side="top", padx=10, pady=10)
 
-            upload_button = ttk.Button(button_frame, text="Upload Video")
-            upload_button.pack(side="left", padx=5, pady=5)
+        upload_button = ttk.Button(control_frame, text="Upload Video")
+        upload_button.pack(side="left", padx=5, pady=5)
 
-            start_button = ttk.Button(button_frame, text="Start Video")
-            start_button.pack(side="left", padx=5, pady=5)
+        start_button = ttk.Button(control_frame, text="Start Video")
+        start_button.pack(side="left", padx=5, pady=5)
 
-            pause_button = ttk.Button(button_frame, text="Pause Video")
-            pause_button.pack(side="left", padx=5, pady=5)
+        pause_button = ttk.Button(control_frame, text="Pause Video")
+        pause_button.pack(side="left", padx=5, pady=5)
 
-            close_button = ttk.Button(button_frame, text="Close Video", command=self.destroy)
-            close_button.pack(side="left", padx=5, pady=5)
+        close_button = ttk.Button(control_frame, text="Close Video", command=self.destroy)
+        close_button.pack(side="left", padx=5, pady=5)
 
-            # Frame to display video or thumbnail
-            self.video_frame = ttk.Frame(self, width=640, height=480)
-            self.video_frame.pack(side="top", padx=10, pady=10)
+        # Frame to display video or thumbnail
+        self.video_frame = ttk.Frame(self, width=640, height=480)
+        self.video_frame.pack(side="top", padx=10, pady=10)
 
-            # Placeholder image for video frame
-            self.thumbnail_image = Image.open("play.ico")  # Replace with your thumbnail image
-            self.thumbnail_image = self.thumbnail_image.resize((640, 480), Image.Resampling.LANCZOS)
-            self.thumbnail_photo = ImageTk.PhotoImage(self.thumbnail_image)
-            self.video_label = ttk.Label(self.video_frame, image=self.thumbnail_photo)
-            self.video_label.pack(fill="both", expand=True)
+        # Placeholder image for video frame
+        self.thumbnail_image = Image.open("play.ico")  # Replace with your thumbnail image
+        self.thumbnail_image = self.thumbnail_image.resize((640, 480), Image.Resampling.LANCZOS)
+        self.thumbnail_photo = ImageTk.PhotoImage(self.thumbnail_image)
+        self.video_label = ttk.Label(self.video_frame, image=self.thumbnail_photo)
+        self.video_label.pack(fill="both", expand=True)
 
 def create_workspace_screen():
     root = tk.Tk()
@@ -176,6 +174,12 @@ def create_workspace_screen():
     create_video_button.place(x=x_start, y=y_start)
 
     # upload_video_button = ttk.Button(root, text="Upload New Video", style="LargeButton.TButton")
+    # upload_video_button.place(x=x_start + button_width + spacing, y=y_start)
+
+    # def open_video_player_window():
+    #     video_player_window = VideoPlayerWindow(root)
+
+    # upload_video_button = ttk.Button(root, text="Upload New Video", style="LargeButton.TButton", command=open_video_player_window)
     # upload_video_button.place(x=x_start + button_width + spacing, y=y_start)
 
     def open_video_player_window():
